@@ -1,5 +1,6 @@
 using DataAccessLayer;
 using DataAccessLayer.Entities;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +9,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-var app = builder.Build();
-
 builder.Services.AddDbContext<PlantCareDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -17,6 +16,8 @@ builder.Services.AddControllers().AddOData(options =>
     options.Select().Filter().OrderBy().Expand().Count().SetMaxTop(50));
 
 builder.Services.AddEndpointsApiExplorer();
+
+var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -32,15 +33,60 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 
-// Plants endpoints
-app.MapGet("/api/plants", (PlantCareDbContext db, ODataQueryOptions<Plant> options) =>
-    {
-        IQueryable<Plant> query = db.Plants;
+app.MapGet("/api/plants", async (
+    PlantCareDbContext db,
+    string? status,
+    string? location,
+    string? species,
+    DateTime? createdAfter,
+    DateTime? createdBefore,
+    string? sortBy,
+    bool descending = false,
+    int page = 1,
+    int pageSize = 20) =>
+{
+    var query = db.Plants.AsQueryable();
     
-        var result = options.ApplyTo(query);
-        return Task.FromResult(Results.Ok(result));
-    })
-    .WithName("GetPlants");
+    if (!string.IsNullOrEmpty(status))
+        query = query.Where(p => p.Status == status);
+    
+    if (!string.IsNullOrEmpty(location))
+        query = query.Where(p => p.Location.Contains(location));
+    
+    if (!string.IsNullOrEmpty(species))
+        query = query.Where(p => p.Species.Contains(species));
+    
+    if (createdAfter.HasValue)
+        query = query.Where(p => p.CreatedAt >= createdAfter.Value);
+    
+    if (createdBefore.HasValue)
+        query = query.Where(p => p.CreatedAt <= createdBefore.Value);
+    
+    // Sorting
+    query = sortBy?.ToLower() switch
+    {
+        "name" => descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+        "species" => descending ? query.OrderByDescending(p => p.Species) : query.OrderBy(p => p.Species),
+        "createdat" => descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
+        "location" => descending ? query.OrderByDescending(p => p.Location) : query.OrderBy(p => p.Location),
+        _ => query.OrderByDescending(p => p.CreatedAt)
+    };
+    
+    var totalCount = await query.CountAsync();
+    var items = await query
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+    
+    return Results.Ok(new
+    {
+        TotalCount = totalCount,
+        Page = page,
+        PageSize = pageSize,
+        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+        Items = items
+    });
+});
 
 app.MapGet("/api/plants/{id:int}", async (int id, PlantCareDbContext db) =>
 {

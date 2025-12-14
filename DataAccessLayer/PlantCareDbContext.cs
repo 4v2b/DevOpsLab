@@ -3,18 +3,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DataAccessLayer;
 
-public class PlantCareDbContext(DbContextOptions options) : DbContext(options)
+public class PlantCareDbContext : DbContext
 {
     public DbSet<Plant> Plants { get; set; }
     public DbSet<Observation> Observations { get; set; }
     public DbSet<CareAction> CareActions { get; set; }
     public DbSet<HealthAssessment> HealthAssessments { get; set; }
     public DbSet<CareActionType> CareActionTypes { get; set; }
-    
-    public string DbPath { get; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder options)
-        => options.UseSqlite($"Data Source={DbPath}");
+    public PlantCareDbContext(DbContextOptions<PlantCareDbContext> options) 
+        : base(options) 
+    { }
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlite("Data Source=plantcare.db");
+        }
+    }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
