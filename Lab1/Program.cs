@@ -9,6 +9,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = 
+        System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
+
 builder.Services.AddDbContext<PlantCareDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -76,6 +82,7 @@ app.MapGet("/api/plants", async (
     var items = await query
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
+        .Include(e => e.Observations)
         .ToListAsync();
     
     return Results.Ok(new
@@ -135,15 +142,6 @@ app.MapDelete("/api/plants/{id:int}", async (int id, PlantCareDbContext db) =>
 });
 
 // Observations endpoints
-app.MapGet("/api/plants/{plantId:int}/observations", async (int plantId, PlantCareDbContext db) =>
-{
-    return await db.Observations
-        .Where(o => o.PlantId == plantId)
-        .Include(o => o.HealthAssessment)
-        .OrderByDescending(o => o.Timestamp)
-        .ToListAsync();
-});
-
 app.MapPost("/api/observations", async (Observation observation, PlantCareDbContext db) =>
 {
     observation.Timestamp = DateTime.UtcNow;
@@ -151,7 +149,12 @@ app.MapPost("/api/observations", async (Observation observation, PlantCareDbCont
     db.Observations.Add(observation);
     await db.SaveChangesAsync();
     
-    return Results.Created($"/api/observations/{observation.Id}", observation);
+    var savedObservation = await db.Observations
+        .Include(o => o.Plant)
+        .Include(o => o.HealthAssessment)
+        .FirstOrDefaultAsync(o => o.Id == observation.Id);
+    
+    return Results.Created($"/api/observations/{observation.Id}", savedObservation);
 });
 
 // Care Actions endpoints
@@ -171,7 +174,13 @@ app.MapPost("/api/care-actions", async (CareAction careAction, PlantCareDbContex
     db.CareActions.Add(careAction);
     await db.SaveChangesAsync();
     
-    return Results.Created($"/api/care-actions/{careAction.Id}", careAction);
+    // Перезавантаж з related entities
+    var savedAction = await db.CareActions
+        .Include(c => c.CareActionType)
+        .Include(c => c.Plant)
+        .FirstOrDefaultAsync(c => c.Id == careAction.Id);
+    
+    return Results.Created($"/api/care-actions/{careAction.Id}", savedAction);
 });
 
 // Care Action Types endpoints
