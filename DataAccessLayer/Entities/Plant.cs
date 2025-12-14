@@ -8,7 +8,6 @@ public class Plant : BaseEntity
     public DateTime CreatedAt { get; set; }
 
     public string Status { get; set; }
-    public int PlantStatusId { get; set; }
     
     public List<CareAction> CareActions { get; set; }
     public List<Observation> Observations { get; set; }
