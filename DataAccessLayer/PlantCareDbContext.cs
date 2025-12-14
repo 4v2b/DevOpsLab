@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DataAccessLayer;
 
-public class PlantCareDbContext : DbContext
+public class PlantCareDbContext(DbContextOptions options) : DbContext(options)
 {
     public DbSet<Plant> Plants { get; set; }
     public DbSet<Observation> Observations { get; set; }
@@ -13,13 +13,6 @@ public class PlantCareDbContext : DbContext
     
     public string DbPath { get; }
 
-    public PlantCareDbContext()
-    {
-        var folder = Environment.SpecialFolder.LocalApplicationData;
-        var path = Environment.GetFolderPath(folder);
-        DbPath = Path.Join(path, "plantcare.db");
-    }
-    
     protected override void OnConfiguring(DbContextOptionsBuilder options)
         => options.UseSqlite($"Data Source={DbPath}");
     

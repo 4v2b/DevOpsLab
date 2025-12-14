@@ -11,7 +11,7 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 builder.Services.AddDbContext<PlantCareDbContext>(options =>
-    options.UseSqlite("Data Source=plantjournal.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddControllers().AddOData(options => 
     options.Select().Filter().OrderBy().Expand().Count().SetMaxTop(50));
@@ -22,6 +22,12 @@ builder.Services.AddEndpointsApiExplorer();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PlantCareDbContext>();
+    db.Database.Migrate();
 }
 
 app.UseHttpsRedirection();
