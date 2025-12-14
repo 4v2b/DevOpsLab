@@ -3,6 +3,7 @@ using System;
 using DataAccessLayer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccessLayer.Migrations
 {
     [DbContext(typeof(PlantCareDbContext))]
-    partial class PlantCareDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251214171901_RemovedRedundantKey")]
+    partial class RemovedRedundantKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -98,6 +101,7 @@ namespace DataAccessLayer.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Recommendations")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -115,12 +119,14 @@ namespace DataAccessLayer.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("DataPayload")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("HealthAssessmentId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("MediaUrl")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ObservationType")
